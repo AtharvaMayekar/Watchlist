@@ -19,6 +19,10 @@ app.get("/create_account", (req, res) => {
     res.render("create_account")
 })
 
+app.post("/home", (req, res) => {
+    res.render("home")
+})
+
 process.stdin.setEncoding("utf8");
 
 if (process.argv.length != 3) {

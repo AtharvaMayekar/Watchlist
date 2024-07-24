@@ -13,28 +13,34 @@
 	<header>
 		<nav class="navbar bg-dark navbar-dark">
 			<div class="container-fluid">
-				<a class="navbar-brand" href="#">
+				<a class="navbar-brand" href="/">
 					MyWatchlist
 				</a>
 			</div>
 		</nav>
 	</header>
 
-    <div class="card text-center">
-		<div class="card-header">
-			<h2>Login</h2>
-		</div>
-		<div class="card-body">
-			<form method="post">
-				<label>Username: <input class="form-control" id="username" type="text"></label><br>
-				<label>Password: <input class="form-control" id="password" type="password"></label><br>
-				<button class="btn btn-primary" type="submit">Login</button>
-			</form>
-			<hr>
-			<h5>Don't have an account?</h5>
-			<form method="get" action="create_account">
-				<button class="btn btn-secondary" type="submit">Create Account</button>
-			</form>
-		</div>
+	<br><br><br><br><br><br>
+
+	<div class="d-flex justify-content-center align-items-center">
+		<div class="w-50 card text-center">
+			<div class="card-header">
+				<h2>Login</h2>
+			</div>
+			<div class="card-body">
+				<%= message %>
+				<form method="post" action="home">
+					<label>Username: <input class="form-control" id="username" type="text"></label><br>
+					<label>Password: <input class="form-control" id="password" type="password"></label><br>
+					<button class="btn btn-primary" type="submit">Login</button>
+				</form>
+				<hr>
+				<h5>Don't have an account?</h5>
+				<form method="get" action="create_account">
+					<button class="btn btn-secondary" type="submit">Create Account</button>
+				</form>
+			</div>
+		</div>		
 	</div>
+    
 </body>
