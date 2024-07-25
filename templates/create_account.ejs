@@ -28,15 +28,15 @@
 				<h2>Create Account</h2>
 			</div>
 			<div class="card-body">
-				<form method="post">
-					<label>Username: <input class="form-control" id="username" type="text"></label><br>
-					<label>Password: <input class="form-control" id="password" type="password"></label><br>
-					<label>Confirm Password: <input class="form-control" id="confirm-password" type="password"></label><br>
+				<form method="post" action="/login">
+					<label>Username: <input class="form-control" name="username" type="text"></label><br>
+					<label>Password: <input class="form-control" name="password" type="password"></label><br>
+					<label>Password: <input class="form-control" name="confirm_password" type="password"></label><br>
 					<button class="btn btn-primary" type="submit">Create Account</button>
 				</form>
 				<hr>
 				<h5>Already have an account?</h5>
-				<form method="get" action="login">
+				<form method="get" action="/login">
 					<button class="btn btn-secondary" type="submit">Login</button>
 				</form>
 			</div>

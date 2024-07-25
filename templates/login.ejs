@@ -28,15 +28,14 @@
 				<h2>Login</h2>
 			</div>
 			<div class="card-body">
-				<%= message %>
-				<form method="post" action="home">
+				<form method="post" action="/home">
 					<label>Username: <input class="form-control" id="username" type="text"></label><br>
 					<label>Password: <input class="form-control" id="password" type="password"></label><br>
 					<button class="btn btn-primary" type="submit">Login</button>
 				</form>
 				<hr>
 				<h5>Don't have an account?</h5>
-				<form method="get" action="create_account">
+				<form method="get" action="/create_account">
 					<button class="btn btn-secondary" type="submit">Create Account</button>
 				</form>
 			</div>
