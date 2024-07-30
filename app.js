@@ -1,6 +1,7 @@
 const path = require('path')
 const express = require('express')
 const session = require("express-session");
+const cookieParser = require("cookie-parser");
 const bodyParser = require('body-parser')
 const app = express()
 
@@ -15,21 +16,33 @@ const client = new MongoClient(uri, {
     serverApi: {
       version: ServerApiVersion.v1,
       strict: true,
-      deprecationErrors: true,
-    }
-  })
+      deprecationErrors: true,}
+    })
 
+app.use(cookieParser())
 app.use(session({
     resave: true,
     saveUninitialized: false,
-    secret: process.env.SESSION_SECRET}))
+    secret: process.env.SESSION_SECRET}
+))
 
 app.get("/", (req, res) => {
     res.render("welcome")
 })
 
-app.get("/login", (req, res) => {
-    res.render("login")
+app.post("/", (req, res) => {
+    if(req.session.username != undefined) {
+        req.session.destroy()
+    }
+    res.render("welcome")
+})
+
+app.get("/login", async (req, res) => {
+    if(req.session.username != undefined) {
+        res.redirect("/home")
+    } else {
+        res.render("login")
+    }
 })
 
 app.post("/login", async (req, res) => {
@@ -37,9 +50,9 @@ app.post("/login", async (req, res) => {
         await client.connect()
         let {username, password, confirm_password} = req.body
         const result = await client.db(process.env.LOGIN_DB).collection(process.env.USER_PASS_COL).findOne({username: username})
-        if (result) {
+        if(result) {
             res.redirect("/create_account?issue=user")
-        } else if (password == confirm_password) {
+        } else if (password !== confirm_password) {
             res.redirect("/create_account?issue=pass")
         } else {
             await client.db(process.env.LOGIN_DB).collection(process.env.USER_PASS_COL).insertOne({username: username, password: password})
@@ -56,8 +69,22 @@ app.get("/create_account", (req, res) => {
     res.render("create_account")
 })
 
+app.get("/home", (req, res) => {
+    if(req.session.username != undefined) {
+        res.render("home", {username: req.session.username})
+    } else {
+        res.redirect("/login")
+    }
+})
+
 app.post("/home", (req, res) => {
-    res.render("home")
+    let {username, password} = req.body
+    if(username != undefined && password != undefined) {
+        req.session.username = username 
+        req.session.password = password
+        req.session.save()
+    }
+    res.render("home", {username: req.session.username})
 })
 
 process.stdin.setEncoding("utf8");
