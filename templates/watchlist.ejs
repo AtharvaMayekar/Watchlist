@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8" />
+	<title><%-username%>'s Watchlist</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+
+<body>
+    <header>
+		<nav class="navbar bg-dark navbar-expand-sm navbar-dark">
+			<div class="container-fluid">
+				<a class="navbar-brand" href="/home">
+					MyWatchlist
+				</a>
+				<div class="navbar-nav">
+					<a class="nav-link active" href="/watchlist">Watchlist</a>
+					<a class="nav-link" href="/ratings">Ratings</a>
+				</div>	
+				<form method="post" action="/">
+					<button class="btn btn-secondary" type="submit">Logout</button>
+				</form>
+			</div>
+		</nav>
+	</header>
+	
+	<div>
+		<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addToWatchlist">
+			Add to your Watchlist
+		</button>
+	</div>
+
+	<div class="modal fade" id="addToWatchlist">
+		<div class="modal-dialog modal-dialog-centered">
+		  <div class="modal-content">
+			<div class="modal-header">
+			  <h4 class="modal-title">Add to your Watchlist</h4>
+			  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+			</div>
+	  
+			<form>
+				<div class="modal-body">
+					<div class="form-check">
+						<label class="form-check-label"><input class="form-check-input" type="radio" name="movie" checked>Movie</label>
+					</div>
+					<div class="form-check">
+						
+						<label class="form-check-label"><input class="form-check-input" type="radio" name="show">Show</label>
+					</div>
+					<label>Title <input class="form-control" name="title" type="text" required></label>
+					<label>Genre <input class="form-control" name="genre" type="text"></label>
+				</div>
+		  
+				<div class="modal-footer">
+				  <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cancel</button>
+				  <button class="btn btn-primary" type="submit">Add</button>
+				</div>
+			</form>
+		  </div>
+		</div>
+	  </div>
+</body>

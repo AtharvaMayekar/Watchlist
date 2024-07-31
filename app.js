@@ -39,7 +39,7 @@ app.post("/", (req, res) => {
 
 app.get("/login", async (req, res) => {
     if(req.session.username != undefined) {
-        res.redirect("/home")
+        res.redirect("/watchlist")
     } else {
         res.render("login")
     }
@@ -69,22 +69,30 @@ app.get("/create_account", (req, res) => {
     res.render("create_account")
 })
 
-app.get("/home", (req, res) => {
+app.get("/watchlist", (req, res) => {
     if(req.session.username != undefined) {
-        res.render("home", {username: req.session.username})
+        res.render("watchlist", {username: req.session.username})
     } else {
         res.redirect("/login")
     }
 })
 
-app.post("/home", (req, res) => {
+app.post("/watchlist", (req, res) => {
     let {username, password} = req.body
     if(username != undefined && password != undefined) {
         req.session.username = username 
         req.session.password = password
         req.session.save()
     }
-    res.render("home", {username: req.session.username})
+    res.render("watchlist", {username: req.session.username})
+})
+
+app.get("/ratings", (req, res) => {
+    if(req.session.username != undefined) {
+        res.render("ratings", {username: req.session.username})
+    } else {
+        res.redirect("/login")
+    }
 })
 
 process.stdin.setEncoding("utf8");
