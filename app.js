@@ -56,6 +56,7 @@ app.post("/login", async (req, res) => {
             res.redirect("/create_account?issue=pass")
         } else {
             await client.db(process.env.LOGIN_DB).collection(process.env.USER_PASS_COL).insertOne({username: username, password: password})
+            await client.db(process.env.CONTENT_DB).collection(process.env.ENTRIES_COL).insertOne({username: username, watchlist: [], ratings: []})
             res.redirect("/login")
         }
     } catch(e) {
@@ -69,22 +70,53 @@ app.get("/create_account", (req, res) => {
     res.render("create_account")
 })
 
-app.get("/watchlist", (req, res) => {
+app.get("/watchlist", async (req, res) => {
+    let content = ""
     if(req.session.username != undefined) {
-        res.render("watchlist", {username: req.session.username})
+        try {
+            await client.connect()
+            if(req.query != undefined && req.query.genre != undefined) {
+                await client.db(process.env.CONTENT_DB).collection(process.env.ENTRIES_COL).updateOne({username: req.session.username}, {$push: {watchlist: req.query}})
+            }
+            const result = await client.db(process.env.CONTENT_DB).collection(process.env.ENTRIES_COL).findOne({username: req.session.username})
+            content = result.watchlist.reduce((acc, entry) => {
+                return acc +=   `<div class="card">
+                                    <div class="card-body">
+                                        Title: ${entry.title} 
+                                        Genre: ${entry.genre}
+                                    </div>
+                                </div>`
+            }, "")
+        } catch(e) {
+            console.error(e)
+        } finally {
+            await client.close()
+        }
+        console.log(content)
+        res.render("watchlist", {username: req.session.username, watchlist: content})
     } else {
         res.redirect("/login")
     }
 })
 
-app.post("/watchlist", (req, res) => {
-    let {username, password} = req.body
-    if(username != undefined && password != undefined) {
-        req.session.username = username 
-        req.session.password = password
-        req.session.save()
+app.post("/watchlist", async (req, res) => {
+    try {
+        await client.connect()
+        let {username, password} = req.body
+        const result = await client.db(process.env.LOGIN_DB).collection(process.env.USER_PASS_COL).findOne({username: username, password: password})
+        if(result) {
+            req.session.username = username 
+            req.session.password = password
+            req.session.save()
+            res.render("watchlist", {username: req.session.username, watchlist: "none"})
+        } else {
+            res.redirect("/login?issue=invalid")
+        }
+    } catch(e) {
+        console.error(e)
+    } finally {
+        await client.close()
     }
-    res.render("watchlist", {username: req.session.username})
 })
 
 app.get("/ratings", (req, res) => {

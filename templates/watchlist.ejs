@@ -13,7 +13,7 @@
     <header>
 		<nav class="navbar bg-dark navbar-expand-sm navbar-dark">
 			<div class="container-fluid">
-				<a class="navbar-brand" href="/home">
+				<a class="navbar-brand" href="/watchlist">
 					MyWatchlist
 				</a>
 				<div class="navbar-nav">
@@ -31,6 +31,7 @@
 		<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addToWatchlist">
 			Add to your Watchlist
 		</button>
+		<%-watchlist%>
 	</div>
 
 	<div class="modal fade" id="addToWatchlist">
@@ -43,13 +44,6 @@
 	  
 			<form>
 				<div class="modal-body">
-					<div class="form-check">
-						<label class="form-check-label"><input class="form-check-input" type="radio" name="movie" checked>Movie</label>
-					</div>
-					<div class="form-check">
-						
-						<label class="form-check-label"><input class="form-check-input" type="radio" name="show">Show</label>
-					</div>
 					<label>Title <input class="form-control" name="title" type="text" required></label>
 					<label>Genre <input class="form-control" name="genre" type="text"></label>
 				</div>
