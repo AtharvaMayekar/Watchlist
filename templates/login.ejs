@@ -27,10 +27,11 @@
 			<div class="card-header">
 				<h2>Login</h2>
 			</div>
-			<div class="card-body">
+			<div class=" card-body">
+				<h6><%-message%></h6>
 				<form method="post" action="/watchlist">
-					<label>Username: <input class="form-control" name="username" type="text"></label><br>
-					<label>Password: <input class="form-control" name="password" type="password"></label><br>
+					<label>Username <input class="form-control" name="username" type="text" placeholder="Enter your username" required></label>
+					<label>Password <input class="form-control" name="password" type="password" placeholder="Enter your password" required></label>
 					<button class="btn btn-primary" type="submit">Login</button>
 				</form>
 				<hr>

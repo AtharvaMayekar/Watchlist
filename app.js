@@ -10,13 +10,14 @@ app.set("view engine", "ejs")
 app.use(bodyParser.urlencoded({extended:false}))
 
 require("dotenv").config({path: path.resolve(__dirname, ".env")})
-const { MongoClient, ServerApiVersion } = require('mongodb')
+const { MongoClient, ServerApiVersion } = require('mongodb');
+const { render } = require('ejs');
 const uri = process.env.MONGO_CONNECTION_STRING
 const client = new MongoClient(uri, {
     serverApi: {
       version: ServerApiVersion.v1,
       strict: true,
-      deprecationErrors: true,}
+      deprecationErrors: true}
     })
 
 app.use(cookieParser())
@@ -37,27 +38,29 @@ app.post("/", (req, res) => {
     res.render("welcome")
 })
 
-app.get("/login", async (req, res) => {
+app.get("/login", (req, res) => {
     if(req.session.username != undefined) {
         res.redirect("/watchlist")
     } else {
-        res.render("login")
+        res.render("login", req.query.message ? req.query : {message: ""})
     }
 })
 
 app.post("/login", async (req, res) => {
     try {
-        await client.connect()
         let {username, password, confirm_password} = req.body
-        const result = await client.db(process.env.LOGIN_DB).collection(process.env.USER_PASS_COL).findOne({username: username})
-        if(result) {
-            res.redirect("/create_account?issue=user")
-        } else if (password !== confirm_password) {
-            res.redirect("/create_account?issue=pass")
+        if(password === confirm_password) {
+            await client.connect()
+            const result = await client.db(process.env.LOGIN_DB).collection(process.env.USER_PASS_COL).findOne({username: username})
+            if(result) {
+                res.redirect("/create_account?message=Username+already+taken")
+            } else {
+                await client.db(process.env.LOGIN_DB).collection(process.env.USER_PASS_COL).insertOne({username: username, password: password})
+                await client.db(process.env.CONTENT_DB).collection(process.env.ENTRIES_COL).insertOne({username: username, watchlist: [], ratings: []})
+                res.redirect("/login?message=Account+successfully+created")
+            }
         } else {
-            await client.db(process.env.LOGIN_DB).collection(process.env.USER_PASS_COL).insertOne({username: username, password: password})
-            await client.db(process.env.CONTENT_DB).collection(process.env.ENTRIES_COL).insertOne({username: username, watchlist: [], ratings: []})
-            res.redirect("/login")
+            res.redirect("/create_account?message=Passwords+do+not+match")
         }
     } catch(e) {
         console.error(e)
@@ -67,33 +70,23 @@ app.post("/login", async (req, res) => {
 })
 
 app.get("/create_account", (req, res) => {
-    res.render("create_account")
+    res.render("create_account", req.query.message ? req.query : {message: ""})
 })
 
 app.get("/watchlist", async (req, res) => {
-    let content = ""
     if(req.session.username != undefined) {
-        try {
-            await client.connect()
-            if(req.query != undefined && req.query.genre != undefined) {
+        console.log(req.query.title)
+        if(req.query.title !== undefined) {
+            try {
+                await client.connect()
                 await client.db(process.env.CONTENT_DB).collection(process.env.ENTRIES_COL).updateOne({username: req.session.username}, {$push: {watchlist: req.query}})
+            } catch(e) {
+                console.error(e)
+            } finally {
+                await client.close()
             }
-            const result = await client.db(process.env.CONTENT_DB).collection(process.env.ENTRIES_COL).findOne({username: req.session.username})
-            content = result.watchlist.reduce((acc, entry) => {
-                return acc +=   `<div class="card">
-                                    <div class="card-body">
-                                        Title: ${entry.title} 
-                                        Genre: ${entry.genre}
-                                    </div>
-                                </div>`
-            }, "")
-        } catch(e) {
-            console.error(e)
-        } finally {
-            await client.close()
         }
-        console.log(content)
-        res.render("watchlist", {username: req.session.username, watchlist: content})
+        res.render("watchlist", {username: req.session.username, watchlist: await renderWatchlist(req.session.username)})
     } else {
         res.redirect("/login")
     }
@@ -102,18 +95,18 @@ app.get("/watchlist", async (req, res) => {
 app.post("/watchlist", async (req, res) => {
     try {
         await client.connect()
-        let {username, password} = req.body
-        const result = await client.db(process.env.LOGIN_DB).collection(process.env.USER_PASS_COL).findOne({username: username, password: password})
+        const result = await client.db(process.env.LOGIN_DB).collection(process.env.USER_PASS_COL).findOne(req.body)
         if(result) {
-            req.session.username = username 
-            req.session.password = password
+            req.session.username = req.body.username 
+            req.session.password = req.body.password
             req.session.save()
-            res.render("watchlist", {username: req.session.username, watchlist: "none"})
+            res.render("watchlist", {username: req.session.username, watchlist: await renderWatchlist(req.session.username)})
         } else {
-            res.redirect("/login?issue=invalid")
+            res.redirect("/login?message=Invalid+username+or+password")
         }
     } catch(e) {
         console.error(e)
+        res.redirect("/welcome")
     } finally {
         await client.close()
     }
@@ -126,6 +119,58 @@ app.get("/ratings", (req, res) => {
         res.redirect("/login")
     }
 })
+
+async function renderWatchlist(username) {
+    try {
+        await client.connect()
+        const result = await client.db(process.env.CONTENT_DB).collection(process.env.ENTRIES_COL).findOne({username: username})
+        return result.watchlist.reduce((acc, entry) => {
+            return acc +=   `<div class="card">
+                                <div class="card-header d-flex">
+                                    <h4>${entry.title}</h4>
+                                    <form class="end" method="get" action="/watchlist">
+                                        <button class="btn btn-success" type="submit">Watched</button>
+                                    </form>
+                                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delete">
+                                        Delete
+                                    </button>
+
+                                    <div class="modal" id="delete">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+
+                                                <div class="modal-body">
+                                                    Are you sure you want to delete <strong>${entry.title}</strong>?
+                                                </div>
+
+                                                <div class="modal-footer">
+                                                    <form>
+                                                        <button class="btn btn-outline-primary" type="button" data-bs-dismiss="modal">No, go back</button>
+				                                        <button class="btn btn-danger" type="submit">Yes, delete</button>
+                                                    </form>
+                                                </div>
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="card-body">
+                                    Body
+                                </div>
+
+                                <div class="card-footer">
+                                    Footer
+                                </div>
+                            </div><br>`
+        }, "")
+    } catch(e) {
+        console.log(e)
+        return ""
+    } finally {
+        await client.close()
+    }
+}
 
 process.stdin.setEncoding("utf8");
 

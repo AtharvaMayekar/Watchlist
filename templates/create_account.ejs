@@ -28,10 +28,11 @@
 				<h2>Create Account</h2>
 			</div>
 			<div class="card-body">
+				<h6 class="text-warning"><%-message%></h6>
 				<form method="post" action="/login">
-					<label>Username: <input class="form-control" name="username" type="text"></label><br>
-					<label>Password: <input class="form-control" name="password" type="password"></label><br>
-					<label>Confirm Password: <input class="form-control" name="confirm_password" type="password"></label><br>
+					<label>Username: <input class="form-control" name="username" type="text" required></label>
+					<label>Password: <input class="form-control" name="password" type="password" required></label>
+					<label>Confirm Password: <input class="form-control" name="confirm_password" type="password" required></label>
 					<button class="btn btn-primary" type="submit">Create Account</button>
 				</form>
 				<hr>
