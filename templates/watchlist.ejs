@@ -45,7 +45,9 @@
 			  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
 			</div>
 	  
-			<form>
+			<form method="post">
+				<input type="hidden" name="action" value="add">
+
 				<div class="modal-body">
 					<label>Title <input class="form-control" name="title" type="text" required></label>
 					<label>Genre <input class="form-control" name="genre" type="text"></label>

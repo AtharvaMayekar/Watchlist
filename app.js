@@ -51,12 +51,12 @@ app.post("/login", async (req, res) => {
         let {username, password, confirm_password} = req.body
         if(password === confirm_password) {
             await client.connect()
-            const result = await client.db(process.env.LOGIN_DB).collection(process.env.USER_PASS_COL).findOne({username: username})
+            const result = await client.db(process.env.USER_DATA_DB).collection(process.env.LOGIN_COL).findOne({username: username})
             if(result) {
                 res.redirect("/create_account?message=Username+already+taken")
             } else {
-                await client.db(process.env.LOGIN_DB).collection(process.env.USER_PASS_COL).insertOne({username: username, password: password})
-                await client.db(process.env.CONTENT_DB).collection(process.env.ENTRIES_COL).insertOne({username: username, watchlist: [], ratings: []})
+                await client.db(process.env.USER_DATA_DB).collection(process.env.LOGIN_COL).insertOne({username: username, password: password})
+                await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).insertOne({username: username, watchlist: [], watched: []})
                 res.redirect("/login?message=Account+successfully+created")
             }
         } else {
@@ -74,35 +74,39 @@ app.get("/create_account", (req, res) => {
 })
 
 app.get("/watchlist", async (req, res) => {
-    if(req.session.username != undefined) {
-        console.log(req.query.title)
-        if(req.query.title !== undefined) {
-            try {
-                await client.connect()
-                await client.db(process.env.CONTENT_DB).collection(process.env.ENTRIES_COL).updateOne({username: req.session.username}, {$push: {watchlist: req.query}})
-            } catch(e) {
-                console.error(e)
-            } finally {
-                await client.close()
-            }
-        }
-        res.render("watchlist", {username: req.session.username, watchlist: await renderWatchlist(req.session.username)})
-    } else {
+    if(req.session.username == undefined) {
         res.redirect("/login")
+    } else {
+        res.render("watchlist", {username: req.session.username, watchlist: await renderWatchlist(req.session.username)})
     }
 })
 
 app.post("/watchlist", async (req, res) => {
+    let {username, password, action, ...rest} = req.body
+    console.log(action, rest)
     try {
         await client.connect()
-        const result = await client.db(process.env.LOGIN_DB).collection(process.env.USER_PASS_COL).findOne(req.body)
-        if(result) {
-            req.session.username = req.body.username 
-            req.session.password = req.body.password
-            req.session.save()
-            res.render("watchlist", {username: req.session.username, watchlist: await renderWatchlist(req.session.username)})
+
+        if(action === "login") {
+            const accountFound = await client.db(process.env.USER_DATA_DB).collection(process.env.LOGIN_COL).findOne({username: username, password: password})
+            if(accountFound) {
+                req.session.username = req.body.username 
+                req.session.save()
+                res.render("watchlist", {username: req.session.username, watchlist: await renderWatchlist(req.session.username)})
+            } else {
+                res.redirect("/login?message=Invalid+username+or+password")
+            }
         } else {
-            res.redirect("/login?message=Invalid+username+or+password")
+            if(req.session.username) {
+                if(action === "add") {
+                    await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$push: {watchlist: rest}})
+                } else if(action === "delete") {
+                    await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watchlist: rest}})
+                }
+                res.render("watchlist", {username: req.session.username, watchlist: await renderWatchlist(req.session.username)})
+            } else {
+                res.redirect("/login?message=Your+session+expired")
+            }
         }
     } catch(e) {
         console.error(e)
@@ -123,33 +127,58 @@ app.get("/ratings", (req, res) => {
 async function renderWatchlist(username) {
     try {
         await client.connect()
-        const result = await client.db(process.env.CONTENT_DB).collection(process.env.ENTRIES_COL).findOne({username: username})
+        const result = await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).findOne({username: username})
         return result.watchlist.reduce((acc, entry) => {
             return acc +=   `<div class="card">
                                 <div class="card-header d-flex">
                                     <h4>${entry.title}</h4>
-                                    <form class="end" method="get" action="/watchlist">
-                                        <button class="btn btn-success" type="submit">Watched</button>
-                                    </form>
-                                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delete">
+                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#watched${entry.title}">
+                                        Watched
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delete${entry.title}">
                                         Delete
                                     </button>
 
-                                    <div class="modal" id="delete">
+                                    <div class="modal" id="watched${entry.title}">
                                         <div class="modal-dialog">
                                             <div class="modal-content">
-
-                                                <div class="modal-body">
-                                                    Are you sure you want to delete <strong>${entry.title}</strong>?
+                                                <div class="modal-header">
+                                                    Rate!
                                                 </div>
 
-                                                <div class="modal-footer">
-                                                    <form>
-                                                        <button class="btn btn-outline-primary" type="button" data-bs-dismiss="modal">No, go back</button>
-				                                        <button class="btn btn-danger" type="submit">Yes, delete</button>
-                                                    </form>
+                                                <form method="post">
+                                                    <div class="modal-body">
+                                                        <input class="form-range" type="range" min="0" max="10" step="0.1" name="rating">
+                                                    </div>
+
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                        <button class="btn btn-success" type="submit">Confirm</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="modal" id="delete${entry.title}">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    Delete from Watchlist
                                                 </div>
 
+                                                <form method="post">
+                                                    <div class="modal-body">
+                                                        Are you sure you want to delete <strong>${entry.title}</strong>?
+                                                        <input type="hidden" name="action" value="delete">
+                                                        <input type="hidden" name="title" value="${entry.title}">
+                                                    </div>
+
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                        <button class="btn btn-danger" type="submit">Delete</button>
+                                                    </div>
+                                                </form>
                                             </div>
                                         </div>
                                     </div>
