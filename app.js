@@ -39,10 +39,10 @@ app.post("/", (req, res) => {
 })
 
 app.get("/login", (req, res) => {
-    if(req.session.username != undefined) {
-        res.redirect("/watchlist")
-    } else {
+    if(req.session.username === undefined) {
         res.render("login", req.query.message ? req.query : {message: ""})
+    } else {
+        res.redirect("/watchlist")
     }
 })
 
@@ -102,6 +102,9 @@ app.post("/watchlist", async (req, res) => {
                     await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$push: {watchlist: rest}})
                 } else if(action === "delete") {
                     await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watchlist: rest}})
+                } else if(action === "watch") {
+                    let result = await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).findOneAndUpdate({username: req.session.username}, {$pull: {watchlist: {title: rest.title}}}, {projection: {watchlist: {$elemMatch: {title: rest.title}}}, returnDocument: 'before'})
+                    await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$push: {watched: { ...result.watchlist[0], ...rest}}})
                 }
                 res.render("watchlist", {username: req.session.username, watchlist: await renderWatchlist(req.session.username)})
             } else {
@@ -116,11 +119,32 @@ app.post("/watchlist", async (req, res) => {
     }
 })
 
-app.get("/ratings", (req, res) => {
-    if(req.session.username != undefined) {
-        res.render("ratings", {username: req.session.username})
-    } else {
+app.get("/watched", async (req, res) => {
+    if(req.session.username === undefined) {
         res.redirect("/login")
+    } else {
+        res.render("watched", {username: req.session.username, watched: await renderWatched(req.session.username)})
+    }
+})
+
+app.post("/watched", async (req, res) => {
+    let {action, ...rest} = req.body
+    console.log(action, rest)
+    try {
+        await client.connect()
+            if(req.session.username) {
+                if(action === "delete") {
+                    await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watched: rest}})
+                }
+                res.render("watched", {username: req.session.username, watchlist: await renderWatchlist(req.session.username)})
+            } else {
+                res.redirect("/login?message=Your+session+expired")
+            }
+    } catch(e) {
+        console.error(e)
+        res.redirect("/welcome")
+    } finally {
+        await client.close()
     }
 })
 
@@ -135,9 +159,6 @@ async function renderWatchlist(username) {
                                     <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#watched${entry.title}">
                                         Watched
                                     </button>
-                                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delete${entry.title}">
-                                        Delete
-                                    </button>
 
                                     <div class="modal" id="watched${entry.title}">
                                         <div class="modal-dialog">
@@ -145,38 +166,15 @@ async function renderWatchlist(username) {
                                                 <div class="modal-header">
                                                     Rate!
                                                 </div>
-
                                                 <form method="post">
                                                     <div class="modal-body">
-                                                        <input class="form-range" type="range" min="0" max="10" step="0.1" name="rating">
+                                                        <input type="hidden" name="action" value="watch">
+                                                        <input type="hidden" name="title" value="${entry.title}">
+                                                        <label>Your Rating: <input class="form-control" type="number" min="0.0" max="10.0" step="0.1" name="rating"></label>
                                                     </div>
-
                                                     <div class="modal-footer">
                                                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                                                         <button class="btn btn-success" type="submit">Confirm</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="modal" id="delete${entry.title}">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    Delete from Watchlist
-                                                </div>
-
-                                                <form method="post">
-                                                    <div class="modal-body">
-                                                        Are you sure you want to delete <strong>${entry.title}</strong>?
-                                                        <input type="hidden" name="action" value="delete">
-                                                        <input type="hidden" name="title" value="${entry.title}">
-                                                    </div>
-
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                        <button class="btn btn-danger" type="submit">Delete</button>
                                                     </div>
                                                 </form>
                                             </div>
@@ -187,9 +185,82 @@ async function renderWatchlist(username) {
                                 <div class="card-body">
                                     Body
                                 </div>
+                                <div class="card-footer">
+                                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delete${entry.title}">
+                                        Delete
+                                    </button>
+                                    
+                                    <div class="modal" id="delete${entry.title}">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    Delete from Watchlist
+                                                </div>
+                                                <form method="post">
+                                                    <div class="modal-body">
+                                                        Are you sure you want to delete <strong>${entry.title}</strong>?
+                                                        <input type="hidden" name="action" value="delete">
+                                                        <input type="hidden" name="title" value="${entry.title}">
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                        <button class="btn btn-danger" type="submit">Delete</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div><br>`
+        }, "")
+    } catch(e) {
+        console.log(e)
+        return ""
+    } finally {
+        await client.close()
+    }
+}
+
+async function renderWatched(username) {
+    try {
+        await client.connect()
+        const result = await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).findOne({username: username})
+        return result.watched.reduce((acc, entry) => {
+            return acc +=   `<div class="card">
+                                <div class="card-header d-flex">
+                                    <h4>${entry.title}</h4>
+                                    <h3>${entry.rating}</h3>
+                                </div>
+
+                                <div class="card-body">
+                                    Body
+                                </div>
 
                                 <div class="card-footer">
-                                    Footer
+                                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delete${entry.title}">
+                                        Delete
+                                    </button>
+
+                                    <div class="modal" id="delete${entry.title}">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    Delete from Watched
+                                                </div>
+                                                <form method="post">
+                                                    <div class="modal-body">
+                                                        Are you sure you want to delete <strong>${entry.title}</strong>?
+                                                        <input type="hidden" name="action" value="delete">
+                                                        <input type="hidden" name="title" value="${entry.title}">
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                        <button class="btn btn-danger" type="submit">Delete</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div><br>`
         }, "")
