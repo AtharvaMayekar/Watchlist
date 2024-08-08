@@ -38,6 +38,10 @@ app.post("/", (req, res) => {
     res.render("welcome")
 })
 
+app.get("/welcome", (req, res) => {
+    res.render("welcome")
+})
+
 app.get("/login", (req, res) => {
     if(req.session.username === undefined) {
         res.render("login", req.query.message ? req.query : {message: ""})
@@ -100,12 +104,15 @@ app.post("/watchlist", async (req, res) => {
             if(req.session.username) {
                 if(action === "add") {
                     await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$push: {watchlist: rest}})
-                } else if(action === "delete") {
-                    await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watchlist: rest}})
                 } else if(action === "watch") {
                     let result = await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).findOneAndUpdate({username: req.session.username}, {$pull: {watchlist: {title: rest.title}}}, {projection: {watchlist: {$elemMatch: {title: rest.title}}}, returnDocument: 'before'})
-                    await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$push: {watched: { ...result.watchlist[0], ...rest}}})
-                }
+                    await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$push: {watched: { ...result.watchlist[0], ...rest}}})                    
+                } else if(action === "delete" || action === "edit") {
+                    await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watchlist: {title: rest.title}}})
+                    if(action === "edit") {
+                        await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$push: {watchlist: rest}})
+                    }
+                } 
                 res.render("watchlist", {username: req.session.username, watchlist: await renderWatchlist(req.session.username)})
             } else {
                 res.redirect("/login?message=Your+session+expired")
@@ -133,10 +140,13 @@ app.post("/watched", async (req, res) => {
     try {
         await client.connect()
             if(req.session.username) {
-                if(action === "delete") {
-                    await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watched: rest}})
+                if(action === "delete" || action === "edit") {
+                    await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watched: {title: rest.title}}})
+                    if(action === "edit") {
+                        await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$push: {watched: rest}})
+                    }
                 }
-                res.render("watched", {username: req.session.username, watchlist: await renderWatchlist(req.session.username)})
+                res.render("watched", {username: req.session.username, watched: await renderWatched(req.session.username)})
             } else {
                 res.redirect("/login?message=Your+session+expired")
             }
@@ -159,56 +169,79 @@ async function renderWatchlist(username) {
                                     <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#watched${entry.title}">
                                         Watched
                                     </button>
-
-                                    <div class="modal" id="watched${entry.title}">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    Rate!
-                                                </div>
-                                                <form method="post">
-                                                    <div class="modal-body">
-                                                        <input type="hidden" name="action" value="watch">
-                                                        <input type="hidden" name="title" value="${entry.title}">
-                                                        <label>Your Rating: <input class="form-control" type="number" min="0.0" max="10.0" step="0.1" name="rating"></label>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                        <button class="btn btn-success" type="submit">Confirm</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
-
                                 <div class="card-body">
                                     Body
                                 </div>
                                 <div class="card-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#edit${entry.title}">
+                                        Edit
+                                    </button>
                                     <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delete${entry.title}">
                                         Delete
                                     </button>
-                                    
-                                    <div class="modal" id="delete${entry.title}">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    Delete from Watchlist
-                                                </div>
-                                                <form method="post">
-                                                    <div class="modal-body">
-                                                        Are you sure you want to delete <strong>${entry.title}</strong>?
-                                                        <input type="hidden" name="action" value="delete">
-                                                        <input type="hidden" name="title" value="${entry.title}">
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                        <button class="btn btn-danger" type="submit">Delete</button>
-                                                    </div>
-                                                </form>
-                                            </div>
+                                </div>
+                            </div>
+
+                            <div class="modal" id="watched${entry.title}">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            Rate!
                                         </div>
+                                        <form method="post">
+                                            <div class="modal-body">
+                                                <input type="hidden" name="action" value="watch">
+                                                <input type="hidden" name="title" value="${entry.title}">
+                                                <label>Your Rating: <input class="form-control" type="number" min="0.0" max="10.0" step="0.1" name="rating"></label>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button class="btn btn-success" type="submit">Confirm</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="modal" id="edit${entry.title}">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            Edit
+                                        </div>
+                                        <form method="post">
+                                            <div class="modal-body">
+                                                <input type="hidden" name="action" value="edit">
+                                                <label>Title <input class="form-control-plaintext" name="title" type="text" readonly value="${entry.title}"></label>
+                                                <label>Genre <input class="form-control" name="genre" type="text" value="${entry.genre}"></label>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button class="btn btn-success" type="submit">Confirm Changes</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="modal" id="delete${entry.title}">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            Delete from Watchlist
+                                        </div>
+                                        <form method="post">
+                                            <div class="modal-body">
+                                                Are you sure you want to delete <strong>${entry.title}</strong>?
+                                                <input type="hidden" name="action" value="delete">
+                                                <input type="hidden" name="title" value="${entry.title}">
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button class="btn btn-danger" type="submit">Delete</button>
+                                            </div>
+                                        </form>
                                     </div>
                                 </div>
                             </div><br>`
@@ -231,35 +264,58 @@ async function renderWatched(username) {
                                     <h4>${entry.title}</h4>
                                     <h3>${entry.rating}</h3>
                                 </div>
-
                                 <div class="card-body">
                                     Body
                                 </div>
-
                                 <div class="card-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#edit${entry.title}">
+                                        Edit
+                                    </button>
                                     <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delete${entry.title}">
                                         Delete
                                     </button>
+                                </div>
+                            </div>
 
-                                    <div class="modal" id="delete${entry.title}">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    Delete from Watched
-                                                </div>
-                                                <form method="post">
-                                                    <div class="modal-body">
-                                                        Are you sure you want to delete <strong>${entry.title}</strong>?
-                                                        <input type="hidden" name="action" value="delete">
-                                                        <input type="hidden" name="title" value="${entry.title}">
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                        <button class="btn btn-danger" type="submit">Delete</button>
-                                                    </div>
-                                                </form>
-                                            </div>
+                            <div class="modal" id="edit${entry.title}">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            Edit
                                         </div>
+                                        <form method="post">
+                                            <div class="modal-body">
+                                                <input type="hidden" name="action" value="edit">
+                                                <label>Title <input class="form-control-plaintext" name="title" type="text" readonly value="${entry.title}"></label>
+                                                <label>Genre <input class="form-control" name="genre" type="text" value="${entry.genre}"></label>
+                                                <label>Your Rating: <input class="form-control" type="number" min="0.0" max="10.0" step="0.1" name="rating" required value="${entry.rating}"></label>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button class="btn btn-success" type="submit">Confirm Changes</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="modal" id="delete${entry.title}">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            Delete from Watched
+                                        </div>
+                                        <form method="post">
+                                            <div class="modal-body">
+                                                Are you sure you want to delete <strong>${entry.title}</strong>?
+                                                <input type="hidden" name="action" value="delete">
+                                                <input type="hidden" name="title" value="${entry.title}">
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button class="btn btn-danger" type="submit">Delete</button>
+                                            </div>
+                                        </form>
                                     </div>
                                 </div>
                             </div><br>`
