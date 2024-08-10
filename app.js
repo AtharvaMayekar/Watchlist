@@ -38,6 +38,10 @@ app.post("/", (req, res) => {
     res.render("index")
 })
 
+app.get("/results", (req, res) => {
+    res.render("results")
+})
+
 app.get("/login", (req, res) => {
     if(req.session.username === undefined) {
         res.render("login", req.query.message ? req.query : {message: ""})

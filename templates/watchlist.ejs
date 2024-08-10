@@ -13,13 +13,19 @@
     <header>
 		<nav class="navbar bg-dark navbar-expand-sm navbar-dark">
 			<div class="container-fluid">
-				<a class="navbar-brand" href="/watchlist">
+				<a class="navbar-brand" href="/">
 					MyWatchlist
 				</a>
 				<div class="navbar-nav">
 					<a class="nav-link active" href="/watchlist">Watchlist</a>
 					<a class="nav-link" href="/watched">Watched</a>
-				</div>	
+				</div>
+				<form method="get" action="/results">
+					<div class="input-group">
+						<input name="search" type="text" placeholder="Find a movie or show" required>
+						<button class="btn btn-primary" type="submit">Search</button>
+					</div>
+				</form>
 				<form method="post" action="/">
 					<button class="btn btn-secondary" type="submit">Logout</button>
 				</form>
