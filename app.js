@@ -28,18 +28,14 @@ app.use(session({
 ))
 
 app.get("/", (req, res) => {
-    res.render("welcome")
+    res.render("index")
 })
 
 app.post("/", (req, res) => {
     if(req.session.username != undefined) {
         req.session.destroy()
     }
-    res.render("welcome")
-})
-
-app.get("/welcome", (req, res) => {
-    res.render("welcome")
+    res.render("index")
 })
 
 app.get("/login", (req, res) => {
@@ -120,7 +116,7 @@ app.post("/watchlist", async (req, res) => {
         }
     } catch(e) {
         console.error(e)
-        res.redirect("/welcome")
+        res.redirect("/")
     } finally {
         await client.close()
     }
@@ -152,7 +148,7 @@ app.post("/watched", async (req, res) => {
             }
     } catch(e) {
         console.error(e)
-        res.redirect("/welcome")
+        res.redirect("/")
     } finally {
         await client.close()
     }
