@@ -16,9 +16,11 @@
 				<a class="navbar-brand" href="/">
 					MyWatchlist
 				</a>
-				<form method="get" action="/results">
+				<form method="get" action="/search_results">
 					<div class="input-group">
-						<input name="search" type="text" placeholder="Find a movie or show" required>
+						<input class="form-control" name="title" type="text" placeholder="Find a movie or show" required>
+						<input type="hidden" name="year" value="">
+						<input type="hidden" name="type" value="0">
 						<button class="btn btn-primary" type="submit">Search</button>
 					</div>
 				</form>

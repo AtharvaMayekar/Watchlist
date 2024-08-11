@@ -20,9 +20,11 @@
 					<a class="nav-link active" href="/watchlist">Watchlist</a>
 					<a class="nav-link" href="/watched">Watched</a>
 				</div>
-				<form method="get" action="/results">
+				<form method="get" action="/search_results">
 					<div class="input-group">
-						<input name="search" type="text" placeholder="Find a movie or show" required>
+						<input class="form-control" name="title" type="text" placeholder="Find a movie or show" required>
+						<input type="hidden" name="year" value="">
+						<input type="hidden" name="type" value="0">
 						<button class="btn btn-primary" type="submit">Search</button>
 					</div>
 				</form>
@@ -32,39 +34,8 @@
 			</div>
 		</nav>
 	</header>
-	
-	<div class="container">
-		<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addToWatchlist">
-			Add to your Watchlist
-		</button>
-	</div>
 
 	<div class="container">
 		<%-watchlist%>
 	</div>
-
-	<div class="modal fade" id="addToWatchlist">
-		<div class="modal-dialog modal-dialog-centered">
-		  <div class="modal-content">
-			<div class="modal-header">
-			  <h4 class="modal-title">Add to your Watchlist</h4>
-			  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-			</div>
-	  
-			<form method="post">
-				<input type="hidden" name="action" value="add">
-
-				<div class="modal-body">
-					<label>Title <input class="form-control" name="title" type="text" required></label>
-					<label>Genre <input class="form-control" name="genre" type="text"></label>
-				</div>
-		  
-				<div class="modal-footer">
-				  <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cancel</button>
-				  <button class="btn btn-primary" type="submit">Add</button>
-				</div>
-			</form>
-		  </div>
-		</div>
-	  </div>
 </body>
