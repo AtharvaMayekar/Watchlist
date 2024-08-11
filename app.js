@@ -74,11 +74,33 @@ app.get("/create_account", (req, res) => {
 })
 
 app.get("/search_results", async (req, res) => {
-    res.render("search_results", {search: req.query, results: await renderResults(req.query)})
+    res.render("search_results", {loggedIn: req.session.username, search: req.query, results: await renderResults(req.session.username, req.query)})
+})
+
+app.post("/search_results", async (req, res) => {
+    let {action, id} = req.body
+    console.log(action, id)
+    if(req.session.username === undefined) {
+        res.redirect("/login")
+    } else {
+        try {
+            await client.connect()
+            if(action === "add") {
+                await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$push: {watchlist: id}})
+            } else if(action =="remove") {
+                await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watchlist: id}})
+            }
+        } catch(e) {
+            console.error(e)
+        } finally {
+            await client.close()
+        }
+        res.render("search_results", {loggedIn: req.session.username, search: req.query, results: await renderResults(req.session.username, req.query)})
+    }
 })
 
 app.get("/watchlist", async (req, res) => {
-    if(req.session.username == undefined) {
+    if(req.session.username === undefined) {
         res.redirect("/login")
     } else {
         res.render("watchlist", {username: req.session.username, watchlist: await renderWatchlist(req.session.username)})
@@ -123,48 +145,56 @@ app.get("/watched", async (req, res) => {
 })
 
 app.post("/watched", async (req, res) => {
-    try {
-        await client.connect()
-            if(req.session.username) {
-                res.render("watched", {username: req.session.username, watched: await renderWatched(req.session.username)})
-            } else {
-                res.redirect("/login?message=Your+session+expired")
-            }
-    } catch(e) {
-        console.error(e)
-        res.redirect("/")
-    } finally {
-        await client.close()
+    if(req.session.username) {
+        res.render("watched", {username: req.session.username, watched: await renderWatched(req.session.username)})
+    } else {
+        res.redirect("/login?message=Your+session+expired")
     }
 })
 
-async function renderResults(search) {
-    let results = await fetch(`http://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}&s=${search.title}${search.year ? `&y${search.year}` : ''}${search.type==='0' ? '' : `&type${search.type==='1' ? 'movie' : 'series'}`}`)
+async function renderResults(username, search) {
+    let results = await fetch(`http://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}&s=${search.title}${search.year ? `&y=${search.year}` : ''}${search.type==='0' ? '' : `&type=${search.type==='1' ? 'movie' : 'series'}`}`)
                         .then(response => response.json())
-    console.log(results)
-
     if(results.Response === 'False') {
-        console.log("Search fail")
         return results.Error
     }
-
-    return results.Search.reduce((acc, entry) => {
-        return acc +=   `<div class="card">
-                            <div class="row g-0">
-                                <div class="col-auto">
-                                    <img src="${entry.Poster}" class="img-fluid rounded-start">
-                                </div>
-                                <div class="col-auto">
-                                    <div class="card-header">
-                                        <h3 class="card-title">${entry.Title}(${entry.Year})</h3>
-                                    </div>
-                                    <div class="card-body">
-                                        
+    
+    try {
+        await client.connect()
+        let acc = ""
+        for(entry of results.Search) {
+            const info = await fetch(`http://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}&i=${entry.imdbID}&t=${entry.Title}&type=${entry.Type}&y=${entry.Year}&plot=full`)
+                                .then(response => response.json())
+            const result = await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).findOne({username: username, watchlist: {$elemMatch: {$eq: entry.imdbID}}})
+            acc +=  `<div class="card">
+                        <div class="card-header d-flex">
+                            <button class="btn" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${entry.imdbID}" aria-expanded="false" aria-controls="collapse${entry.imdbID}">
+                                <h3 class="card-title">${entry.Title}</h3>
+                            </button>
+                            <form method="post">
+                                <input type="hidden" name="action" value=${result ? "remove" : "add"}>
+                                <input type="hidden" name="id" value="${entry.imdbID}">
+                                <button class="btn btn-primary type="submit">${result ? 'Remove' : 'Add'}</button>
+                            </form>
+                        </div>
+                        <div class="collapse" id="collapse${entry.imdbID}">
+                            <div class="card card-body">
+                                <div class="d-flex">
+                                    <img src="${entry.Poster}">
+                                    <div class="container">
+                                        Content
                                     </div>
                                 </div>
                             </div>
-                        </div>`
-    }, "")
+                        </div>
+                    </div>`
+        }
+        return acc
+    } catch(e) {
+        console.error(e)
+    } finally {
+        await client.close()
+    }
 }
 
 async function renderWatchlist(username) {

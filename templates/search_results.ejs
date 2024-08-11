@@ -11,14 +11,24 @@
 
 <body>
     <header>
-		<nav class="navbar bg-dark navbar-dark">
+		<nav class="navbar bg-dark navbar-dark navbar-expand-sm">
 			<div class="container-fluid">
 				<a class="navbar-brand" href="/">
 					MyWatchlist
 				</a>
-				<form method="get" action="/login">
-					<button class="btn btn-primary" type="submit">Login</button>
-				</form>
+				<% if(loggedIn) { %>
+					<div class="navbar-nav">
+						<a class="nav-link active" href="/watchlist">Watchlist</a>
+						<a class="nav-link" href="/watched">Watched</a>
+					</div>
+					<form method="post" action="/">
+						<button class="btn btn-secondary" type="submit">Logout</button>
+					</form>
+				<% } else { %>
+					<form method="get" action="/login">
+						<button class="btn btn-primary" type="submit">Login</button>
+					</form>
+				<% } %>
 			</div>
 		</nav>
 	</header>
@@ -50,9 +60,10 @@
 				<button class="btn btn-primary" type="submit">Search</button>
 			</div>
 		</form>
+
+		<div class="accordion">
+			<%-results%>
+		</div>
 	</div>
-    
-	<div class="container">
-		<%-results%>
-	</div>
+	
 </body>
