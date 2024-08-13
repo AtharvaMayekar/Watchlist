@@ -18,7 +18,7 @@
 				</a>
 				<% if(loggedIn) { %>
 					<div class="navbar-nav">
-						<a class="nav-link active" href="/watchlist">Watchlist</a>
+						<a class="nav-link" href="/watchlist">Watchlist</a>
 						<a class="nav-link" href="/watched">Watched</a>
 					</div>
 					<form method="post" action="/">
@@ -33,7 +33,7 @@
 		</nav>
 	</header>
 	<div class="container">
-		<form class="row align-items-center" method="get" action="/search_results">
+		<form class="row" method="get" action="/search_results">
 			<div class="col-auto">
 				<div class="input-group">
 					<span class="input-group-text">Title</span>
@@ -60,10 +60,10 @@
 				<button class="btn btn-primary" type="submit">Search</button>
 			</div>
 		</form>
+	</div>
 
-		<div class="accordion">
-			<%-results%>
-		</div>
+	<div class="container">
+		<%-results%>
 	</div>
 	
 </body>

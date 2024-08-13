@@ -64,6 +64,7 @@ app.post("/login", async (req, res) => {
         }
     } catch(e) {
         console.error(e)
+        res.redirect("/")
     } finally {
         await client.close()
     }
@@ -78,24 +79,27 @@ app.get("/search_results", async (req, res) => {
 })
 
 app.post("/search_results", async (req, res) => {
-    let {action, id} = req.body
-    console.log(action, id)
-    if(req.session.username === undefined) {
-        res.redirect("/login")
-    } else {
+    let {action, id, ...rest} = req.body
+    if(req.session.username) {
         try {
             await client.connect()
             if(action === "add") {
                 await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$push: {watchlist: id}})
-            } else if(action =="remove") {
+            } else if(action === "remove") {
                 await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watchlist: id}})
+            } else if(action === "rate") {
+                await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watchlist: id}})
+                await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$push: {watched: {imdbID: id, rating: rest.rating}}})
             }
         } catch(e) {
             console.error(e)
+            res.redirect("/")
         } finally {
             await client.close()
         }
         res.render("search_results", {loggedIn: req.session.username, search: req.query, results: await renderResults(req.session.username, req.query)})
+    } else {
+        res.redirect("/login")
     }
 })
 
@@ -108,10 +112,9 @@ app.get("/watchlist", async (req, res) => {
 })
 
 app.post("/watchlist", async (req, res) => {
-    let {username, password} = req.body
+    let {username, password, action, id, ...rest} = req.body
     try {
         await client.connect()
-
         if(username && password) {
             const accountFound = await client.db(process.env.USER_DATA_DB).collection(process.env.LOGIN_COL).findOne({username: username, password: password})
             if(accountFound) {
@@ -123,6 +126,12 @@ app.post("/watchlist", async (req, res) => {
             }
         } else {
             if(req.session.username) {
+                if(action === "remove") {
+                    await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watchlist: id}})
+                } else if(action === "rate") {
+                    await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watchlist: id}})
+                    await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$push: {watched: {imdbID: id, rating: rest.rating}}})
+                }
                 res.render("watchlist", {username: req.session.username, watchlist: await renderWatchlist(req.session.username)})
             } else {
                 res.redirect("/login?message=Your+session+expired")
@@ -137,16 +146,31 @@ app.post("/watchlist", async (req, res) => {
 })
 
 app.get("/watched", async (req, res) => {
-    if(req.session.username === undefined) {
-        res.redirect("/login")
-    } else {
+    if(req.session.username) {
         res.render("watched", {username: req.session.username, watched: await renderWatched(req.session.username)})
+    } else {
+        res.redirect("/login")
     }
 })
 
 app.post("/watched", async (req, res) => {
+    let {action, id, ...rest} = req.body
     if(req.session.username) {
-        res.render("watched", {username: req.session.username, watched: await renderWatched(req.session.username)})
+        try {
+            await client.connect()
+            if(action === "add") {
+                await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watched: {imdbID: id}}})
+                await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$push: {watchlist: id}})
+            } else if(action === "remove") {
+                await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watched: {imdbID: id}}})
+            }
+            res.render("watched", {username: req.session.username, watched: await renderWatched(req.session.username)})
+        } catch(e) {
+            console.error(e)
+            res.redirect("/")
+        } finally {
+            await client.close()
+        }
     } else {
         res.redirect("/login?message=Your+session+expired")
     }
@@ -158,24 +182,26 @@ async function renderResults(username, search) {
     if(results.Response === 'False') {
         return results.Error
     }
-    
     try {
         await client.connect()
         let acc = ""
         for(entry of results.Search) {
             const info = await fetch(`http://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}&i=${entry.imdbID}&t=${entry.Title}&type=${entry.Type}&y=${entry.Year}&plot=full`)
                                 .then(response => response.json())
-            const result = await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).findOne({username: username, watchlist: {$elemMatch: {$eq: entry.imdbID}}})
+            const inWatchlist = await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).findOne({username: username, watchlist: {$elemMatch: {$eq: entry.imdbID}}})
             acc +=  `<div class="card">
                         <div class="card-header d-flex">
                             <button class="btn" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${entry.imdbID}" aria-expanded="false" aria-controls="collapse${entry.imdbID}">
                                 <h3 class="card-title">${entry.Title}</h3>
                             </button>
                             <form method="post">
-                                <input type="hidden" name="action" value=${result ? "remove" : "add"}>
+                                <input type="hidden" name="action" value=${inWatchlist ? "remove" : "add"}>
                                 <input type="hidden" name="id" value="${entry.imdbID}">
-                                <button class="btn btn-primary type="submit">${result ? 'Remove' : 'Add'}</button>
+                                <button class="btn btn-primary type="submit">${inWatchlist ? 'Remove' : 'Add'}</button>
                             </form>
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal${entry.imdbID}">
+                                Rate
+                            </button>
                         </div>
                         <div class="collapse" id="collapse${entry.imdbID}">
                             <div class="card card-body">
@@ -187,11 +213,32 @@ async function renderResults(username, search) {
                                 </div>
                             </div>
                         </div>
+                        <div class="modal fade" id="modal${entry.imdbID}" tabindex="-1" aria-labelledby="modalLabel${entry.imdbID}" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="modalLabel${entry.imdbID}">Rate ${entry.Title}!</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <form method="post">
+                                        <div class="modal-body">
+                                            <input type="hidden" name="action" value="rate">
+                                            <input type="hidden" name="id" value="${entry.imdbID}">
+                                            <input class="form-control" type="number" min="0" max="10" step=".1" value="5" name="rating">
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="submit" class="btn btn-primary">Rate</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
                     </div>`
         }
         return acc
     } catch(e) {
         console.error(e)
+        res.redirect("/")
     } finally {
         await client.close()
     }
@@ -201,12 +248,60 @@ async function renderWatchlist(username) {
     try {
         await client.connect()
         const result = await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).findOne({username: username})
-        return result.watchlist.reduce((acc, entry, i) => {
-            return acc +=   ``
-        }, "")
+        let acc = ""
+        for(imdbID of result.watchlist) {
+            const info = await fetch(`http://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}&i=${imdbID}&plot=full`)
+                                .then(response => response.json())
+            acc +=  `<div class="card">
+                        <div class="card-header d-flex">
+                            <button class="btn" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${info.imdbID}" aria-expanded="false" aria-controls="collapse${info.imdbID}">
+                                <h3 class="card-title">${info.Title}</h3>
+                            </button>
+                            <form method="post">
+                                <input type="hidden" name="action" value="remove"}>
+                                <input type="hidden" name="id" value="${info.imdbID}">
+                                <button class="btn btn-primary type="submit">Remove</button>
+                            </form>
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal${info.imdbID}">
+                                Rate
+                            </button>
+                        </div>
+                        <div class="collapse" id="collapse${info.imdbID}">
+                            <div class="card card-body">
+                                <div class="d-flex">
+                                    <img src="${info.Poster}">
+                                    <div class="container">
+                                        Content
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal fade" id="modal${info.imdbID}" tabindex="-1" aria-labelledby="modalLabel${info.imdbID}" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="modalLabel${info.imdbID}">Rate ${info.Title}!</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <form method="post">
+                                        <div class="modal-body">
+                                            <input type="hidden" name="action" value="rate">
+                                            <input type="hidden" name="id" value="${info.imdbID}">
+                                            <input class="form-control" type="number" min="0" max="10" step=".1" value="5" name="rating">
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="submit" class="btn btn-primary">Rate</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`
+        }
+        return acc
     } catch(e) {
         console.log(e)
-        return ""
+        res.redirect("/")
     } finally {
         await client.close()
     }
@@ -216,12 +311,42 @@ async function renderWatched(username) {
     try {
         await client.connect()
         const result = await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).findOne({username: username})
-        return result.watched.reduce((acc, entry, i) => {
-            return acc +=   ``
-        }, "")
+        let acc = ""
+        for(entry of result.watched) {
+            const info = await fetch(`http://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}&i=${entry.imdbID}&plot=full`)
+                                .then(response => response.json())
+            acc +=  `<div class="card">
+                        <div class="card-header d-flex">
+                            <button class="btn" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${info.imdbID}" aria-expanded="false" aria-controls="collapse${info.imdbID}">
+                                <h3 class="card-title">${info.Title} ${entry.rating}</h3>
+                            </button>
+                            <form method="post">
+                                <input type="hidden" name="action" value="add"}>
+                                <input type="hidden" name="id" value="${info.imdbID}">
+                                <button class="btn btn-primary type="submit">Unwatch</button>
+                            </form>
+                            <form method="post">
+                                <input type="hidden" name="action" value="remove"}>
+                                <input type="hidden" name="id" value="${info.imdbID}">
+                                <button class="btn btn-primary type="submit">Remove</button>
+                            </form>
+                        </div>
+                        <div class="collapse" id="collapse${info.imdbID}">
+                            <div class="card card-body">
+                                <div class="d-flex">
+                                    <img src="${info.Poster}">
+                                    <div class="container">
+                                        Content
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`
+        }
+        return acc
     } catch(e) {
         console.log(e)
-        return ""
+        res.redirect("/")
     } finally {
         await client.close()
     }
