@@ -287,7 +287,7 @@ async function renderWatchlist(username) {
                                         <div class="modal-body">
                                             <input type="hidden" name="action" value="rate">
                                             <input type="hidden" name="id" value="${info.imdbID}">
-                                            <input class="form-control" type="number" min="0" max="10" step=".1" value="5" name="rating">
+                                            <input class="form-control" type="number" min="0" max="10" step=".1" value="5.0" name="rating">
                                         </div>
                                         <div class="modal-footer">
                                             <button type="submit" class="btn btn-primary">Rate</button>
@@ -297,6 +297,9 @@ async function renderWatchlist(username) {
                             </div>
                         </div>
                     </div>`
+        }
+        if(acc == "") {
+            acc = "<h3>Your watchlist is empty</h3>"
         }
         return acc
     } catch(e) {
@@ -310,9 +313,9 @@ async function renderWatchlist(username) {
 async function renderWatched(username) {
     try {
         await client.connect()
-        const result = await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).findOne({username: username})
+        const result = (await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).findOne({username: username})).watched.sort((a, b) => b.rating - a.rating)
         let acc = ""
-        for(entry of result.watched) {
+        for(entry of result) {
             const info = await fetch(`http://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}&i=${entry.imdbID}&plot=full`)
                                 .then(response => response.json())
             acc +=  `<div class="card">
@@ -343,10 +346,12 @@ async function renderWatched(username) {
                         </div>
                     </div>`
         }
+        if(acc == "") {
+            acc="<h3>Your watched is empty</h3>"
+        }
         return acc
     } catch(e) {
         console.log(e)
-        res.redirect("/")
     } finally {
         await client.close()
     }
