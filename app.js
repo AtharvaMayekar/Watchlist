@@ -177,7 +177,7 @@ app.post("/watched", async (req, res) => {
 })
 
 async function renderResults(username, search) {
-    let results = await fetch(`http://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}&s=${search.title}${search.year ? `&y=${search.year}` : ''}${search.type==='0' ? '' : `&type=${search.type==='1' ? 'movie' : 'series'}`}`)
+    let results = await fetch(`http://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}&s=${search.title}${search.type==='0' ? '' : `&type=${search.type==='1' ? 'movie' : 'series'}`}`)
                         .then(response => response.json())
     if(results.Response === 'False') {
         return results.Error
@@ -189,28 +189,31 @@ async function renderResults(username, search) {
             const info = await fetch(`http://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}&i=${entry.imdbID}&t=${entry.Title}&type=${entry.Type}&y=${entry.Year}&plot=full`)
                                 .then(response => response.json())
             const inWatchlist = await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).findOne({username: username, watchlist: {$elemMatch: {$eq: entry.imdbID}}})
-            acc +=  `<div class="card">
-                        <div class="card-header d-flex">
+            acc +=  `<div class="card m-2">
+                        <div class="card-header d-flex justify-content-between align-items-center">
                             <button class="btn" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${entry.imdbID}" aria-expanded="false" aria-controls="collapse${entry.imdbID}">
                                 <h3 class="card-title">${entry.Title}</h3>
                             </button>
-                            <form method="post">
-                                <input type="hidden" name="action" value=${inWatchlist ? "remove" : "add"}>
-                                <input type="hidden" name="id" value="${entry.imdbID}">
-                                <button class="btn btn-primary type="submit">${inWatchlist ? 'Remove' : 'Add'}</button>
-                            </form>
-                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal${entry.imdbID}">
-                                Rate
-                            </button>
+                            <div class="d-flex">
+                                <form method="post" id="addrem${entry.imdbID}">
+                                    <input type="hidden" name="action" value=${inWatchlist ? "remove" : "add"}>
+                                    <input type="hidden" name="id" value="${entry.imdbID}">
+                                </form>
+                                <button class="btn m-1 btn-${inWatchlist ? 'danger' : 'success'}" form="addrem${entry.imdbID}" type="submit"><i class="bi bi-${inWatchlist ? 'dash' : 'plus'}-circle h4"></i></button>
+                                <button type="button" class="btn m-1 btn-warning" data-bs-toggle="modal" data-bs-target="#modal${entry.imdbID}">
+                                    <i class="bi bi-arrow-down-up h4"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="collapse" id="collapse${entry.imdbID}">
                             <div class="card card-body">
-                                <div class="d-flex">
                                     <img src="${entry.Poster}">
-                                    <div class="container">
-                                        Content
+                                    <div>
+                                        <strong>Year: </strong>${info.Year}<br>
+                                        <strong>Genre: </strong>${info.Genre}<br>
+                                        <strong>Runtime: </strong>${info.Runtime}<br>
+                                        <strong>Plot: </strong>${info.Plot}<br>
                                     </div>
-                                </div>
                             </div>
                         </div>
                         <div class="modal fade" id="modal${entry.imdbID}" tabindex="-1" aria-labelledby="modalLabel${entry.imdbID}" aria-hidden="true">
