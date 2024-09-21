@@ -255,19 +255,21 @@ async function renderWatchlist(username) {
         for(imdbID of result.watchlist) {
             const info = await fetch(`http://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}&i=${imdbID}&plot=full`)
                                 .then(response => response.json())
-            acc +=  `<div class="card">
-                        <div class="card-header d-flex">
+            acc +=  `<div class="card m-2">
+                        <div class="card-header d-flex justify-content-between align-items-center">
                             <button class="btn" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${info.imdbID}" aria-expanded="false" aria-controls="collapse${info.imdbID}">
                                 <h3 class="card-title">${info.Title}</h3>
                             </button>
-                            <form method="post">
-                                <input type="hidden" name="action" value="remove"}>
-                                <input type="hidden" name="id" value="${info.imdbID}">
-                                <button class="btn btn-primary type="submit">Remove</button>
-                            </form>
-                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal${info.imdbID}">
-                                Rate
-                            </button>
+                            <div class="d-flex">
+                                <form method="post" id="rem${info.imdbID}">
+                                    <input type="hidden" name="action" value="remove">
+                                    <input type="hidden" name="id" value="${info.imdbID}">
+                                </form>
+                                <button class="btn m-1 btn-danger" form="rem${info.imdbID}" type="submit"><i class="bi bi-dash-circle h4"></i></button>
+                                <button type="button" class="btn m-1 btn-warning" data-bs-toggle="modal" data-bs-target="#modal${info.imdbID}">
+                                        <i class="bi bi-arrow-down-up h4"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="collapse" id="collapse${info.imdbID}">
                             <div class="card card-body">
@@ -321,21 +323,23 @@ async function renderWatched(username) {
         for(entry of result) {
             const info = await fetch(`http://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}&i=${entry.imdbID}&plot=full`)
                                 .then(response => response.json())
-            acc +=  `<div class="card">
-                        <div class="card-header d-flex">
+            acc +=  `<div class="card m-2">
+                        <div class="card-header d-flex justify-content-between align-items-center">
                             <button class="btn" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${info.imdbID}" aria-expanded="false" aria-controls="collapse${info.imdbID}">
                                 <h3 class="card-title">${info.Title} ${entry.rating}</h3>
                             </button>
-                            <form method="post">
-                                <input type="hidden" name="action" value="add"}>
-                                <input type="hidden" name="id" value="${info.imdbID}">
-                                <button class="btn btn-primary type="submit">Unwatch</button>
-                            </form>
-                            <form method="post">
-                                <input type="hidden" name="action" value="remove"}>
-                                <input type="hidden" name="id" value="${info.imdbID}">
-                                <button class="btn btn-primary type="submit">Remove</button>
-                            </form>
+                            <div class="d-flex">
+                                <form method="post" id="remrem${info.imdbID}">
+                                    <input type="hidden" name="action" value="remove"}>
+                                    <input type="hidden" name="id" value="${info.imdbID}">
+                                </form>
+                                <button class="btn m-1 btn-danger" form="rem${info.imdbID}" type="submit"><i class="bi bi-dash-circle h4"></i></button>
+                                <form method="post" id="unwatch${info.imdbID}">
+                                    <input type="hidden" name="action" value="add"}>
+                                    <input type="hidden" name="id" value="${info.imdbID}">
+                                </form>
+                                <button class="btn m-1 btn-warning" form="unwatch${info.imdbID}" type="submit"><i class="bi bi-eye-slash h4"></i></button>
+                            </div>
                         </div>
                         <div class="collapse" id="collapse${info.imdbID}">
                             <div class="card card-body">
