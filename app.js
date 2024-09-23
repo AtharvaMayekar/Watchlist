@@ -189,6 +189,7 @@ async function renderResults(username, search) {
             const info = await fetch(`http://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}&i=${entry.imdbID}&t=${entry.Title}&type=${entry.Type}&y=${entry.Year}&plot=full`)
                                 .then(response => response.json())
             const inWatchlist = await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).findOne({username: username, watchlist: {$elemMatch: {$eq: entry.imdbID}}})
+            const inWatched = await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).findOne({username: username, watched: {$elemMatch: {$eq: entry.imdbID}}})
             acc +=  `<div class="card m-2">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <button class="btn" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${entry.imdbID}" aria-expanded="false" aria-controls="collapse${entry.imdbID}">
@@ -196,24 +197,24 @@ async function renderResults(username, search) {
                             </button>
                             <div class="d-flex">
                                 <form method="post" id="addrem${entry.imdbID}">
-                                    <input type="hidden" name="action" value=${inWatchlist ? "remove" : "add"}>
+                                    <input type="hidden" name="action" value=${inWatchlist || inWatched ? "remove" : "add"}>
                                     <input type="hidden" name="id" value="${entry.imdbID}">
                                 </form>
-                                <button class="btn m-1 btn-${inWatchlist ? 'danger' : 'success'}" form="addrem${entry.imdbID}" type="submit"><i class="bi bi-${inWatchlist ? 'dash' : 'plus'}-circle h4"></i></button>
+                                <button class="btn m-1 btn-${inWatchlist || inWatched ? 'danger' : 'success'}" form="addrem${entry.imdbID}" type="submit"><i class="bi bi-${inWatchlist ? 'dash' : 'plus'}-circle h4"></i></button>
                                 <button type="button" class="btn m-1 btn-warning" data-bs-toggle="modal" data-bs-target="#modal${entry.imdbID}">
                                     <i class="bi bi-arrow-down-up h4"></i>
                                 </button>
                             </div>
                         </div>
                         <div class="collapse" id="collapse${entry.imdbID}">
-                            <div class="card card-body">
-                                    <img src="${entry.Poster}">
-                                    <div>
-                                        <strong>Year: </strong>${info.Year}<br>
-                                        <strong>Genre: </strong>${info.Genre}<br>
-                                        <strong>Runtime: </strong>${info.Runtime}<br>
-                                        <strong>Plot: </strong>${info.Plot}<br>
-                                    </div>
+                            <div class="card card-body d-flex justify-content-between align-items-center">
+                                <img src="${entry.Poster}">
+                                <div>
+                                    <strong>Year: </strong>${info.Year}<br>
+                                    <strong>Genre: </strong>${info.Genre}<br>
+                                    <strong>Runtime: </strong>${info.Runtime}<br>
+                                    <strong>Plot: </strong>${info.Plot}<br>
+                                </div>
                             </div>
                         </div>
                         <div class="modal fade" id="modal${entry.imdbID}" tabindex="-1" aria-labelledby="modalLabel${entry.imdbID}" aria-hidden="true">
@@ -241,7 +242,6 @@ async function renderResults(username, search) {
         return acc
     } catch(e) {
         console.error(e)
-        res.redirect("/")
     } finally {
         await client.close()
     }
@@ -326,8 +326,9 @@ async function renderWatched(username) {
             acc +=  `<div class="card m-2">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <button class="btn" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${info.imdbID}" aria-expanded="false" aria-controls="collapse${info.imdbID}">
-                                <h3 class="card-title">${info.Title} ${entry.rating}</h3>
+                                <h3 class="card-title">${info.Title}</h3>
                             </button>
+                            <h3>${entry.rating}</h3>
                             <div class="d-flex">
                                 <form method="post" id="remrem${info.imdbID}">
                                     <input type="hidden" name="action" value="remove"}>
@@ -338,7 +339,9 @@ async function renderWatched(username) {
                                     <input type="hidden" name="action" value="add"}>
                                     <input type="hidden" name="id" value="${info.imdbID}">
                                 </form>
-                                <button class="btn m-1 btn-warning" form="unwatch${info.imdbID}" type="submit"><i class="bi bi-eye-slash h4"></i></button>
+                                <button class="btn m-1 btn-secondary" form="unwatch${info.imdbID}" type="submit">
+                                    <i class="bi bi-eye-slash h4"></i>
+                                </button>
                             </div>
                         </div>
                         <div class="collapse" id="collapse${info.imdbID}">
