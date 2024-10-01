@@ -272,12 +272,13 @@ async function renderWatchlist(username) {
                             </div>
                         </div>
                         <div class="collapse" id="collapse${info.imdbID}">
-                            <div class="card card-body">
-                                <div class="d-flex">
-                                    <img src="${info.Poster}">
-                                    <div class="container">
-                                        Content
-                                    </div>
+                            <div class="card card-body d-flex justify-content-between align-items-center">
+                                <img src="${info.Poster}">
+                                <div>
+                                    <strong>Year: </strong>${info.Year}<br>
+                                    <strong>Genre: </strong>${info.Genre}<br>
+                                    <strong>Runtime: </strong>${info.Runtime}<br>
+                                    <strong>Plot: </strong>${info.Plot}<br>
                                 </div>
                             </div>
                         </div>
@@ -304,7 +305,7 @@ async function renderWatchlist(username) {
                     </div>`
         }
         if(acc == "") {
-            acc = "<h3>Your watchlist is empty</h3>"
+            acc = "<br><h3 class='text-center'>Your watchlist is empty</h3>"
         }
         return acc
     } catch(e) {
@@ -345,19 +346,20 @@ async function renderWatched(username) {
                             </div>
                         </div>
                         <div class="collapse" id="collapse${info.imdbID}">
-                            <div class="card card-body">
-                                <div class="d-flex">
-                                    <img src="${info.Poster}">
-                                    <div class="container">
-                                        Content
-                                    </div>
+                            <div class="card card-body d-flex justify-content-between align-items-center">
+                                <img src="${info.Poster}">
+                                <div>
+                                    <strong>Year: </strong>${info.Year}<br>
+                                    <strong>Genre: </strong>${info.Genre}<br>
+                                    <strong>Runtime: </strong>${info.Runtime}<br>
+                                    <strong>Plot: </strong>${info.Plot}<br>
                                 </div>
                             </div>
                         </div>
                     </div>`
         }
         if(acc == "") {
-            acc="<h3>Your watched is empty</h3>"
+            acc="<br><h3 class='text-center'>Your watched is empty</h3>"
         }
         return acc
     } catch(e) {
