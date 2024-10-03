@@ -87,8 +87,10 @@ app.post("/search_results", async (req, res) => {
                 await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$push: {watchlist: id}})
             } else if(action === "remove") {
                 await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watchlist: id}})
+                await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watched: {imdbID: id}}})
             } else if(action === "rate") {
                 await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watchlist: id}})
+                await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watched: {imdbID: id}}})
                 await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$push: {watched: {imdbID: id, rating: rest.rating}}})
             }
         } catch(e) {
@@ -130,6 +132,7 @@ app.post("/watchlist", async (req, res) => {
                     await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watchlist: id}})
                 } else if(action === "rate") {
                     await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watchlist: id}})
+                    await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$pull: {watched: {imdbID: id}}})
                     await client.db(process.env.USER_DATA_DB).collection(process.env.CONTENT_COL).updateOne({username: req.session.username}, {$push: {watched: {imdbID: id, rating: rest.rating}}})
                 }
                 res.render("watchlist", {username: req.session.username, watchlist: await renderWatchlist(req.session.username)})
@@ -207,8 +210,10 @@ async function renderResults(username, search) {
                             </div>
                         </div>
                         <div class="collapse" id="collapse${entry.imdbID}">
-                            <div class="card card-body d-flex justify-content-between align-items-center">
-                                <img src="${entry.Poster}">
+                            <div class="card card-body d-flex flex-row justify-content-between align-items-center">
+                                <div class="p-2">
+                                    <img src="${entry.Poster}">
+                                </div>
                                 <div>
                                     <strong>Year: </strong>${info.Year}<br>
                                     <strong>Genre: </strong>${info.Genre}<br>
@@ -272,8 +277,10 @@ async function renderWatchlist(username) {
                             </div>
                         </div>
                         <div class="collapse" id="collapse${info.imdbID}">
-                            <div class="card card-body d-flex justify-content-between align-items-center">
-                                <img src="${info.Poster}">
+                            <div class="card card-body d-flex flex-row justify-content-between align-items-center">
+                                <div class="p-2">
+                                    <img src="${info.Poster}">
+                                </div>
                                 <div>
                                     <strong>Year: </strong>${info.Year}<br>
                                     <strong>Genre: </strong>${info.Genre}<br>
@@ -346,8 +353,10 @@ async function renderWatched(username) {
                             </div>
                         </div>
                         <div class="collapse" id="collapse${info.imdbID}">
-                            <div class="card card-body d-flex justify-content-between align-items-center">
-                                <img src="${info.Poster}">
+                            <div class="card card-body d-flex flex-row justify-content-between align-items-center">
+                                <div class="p-2">
+                                    <img src="${info.Poster}">
+                                </div>
                                 <div>
                                     <strong>Year: </strong>${info.Year}<br>
                                     <strong>Genre: </strong>${info.Genre}<br>
