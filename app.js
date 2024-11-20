@@ -4,6 +4,7 @@ const session = require("express-session");
 const cookieParser = require("cookie-parser");
 const bodyParser = require('body-parser')
 const app = express()
+const port = process.env.PORT || 4000
 
 app.set("views", path.resolve(__dirname, 'templates'))
 app.set("view engine", "ejs")
@@ -385,7 +386,7 @@ async function renderWatched(username) {
 //     process.exit(1)
 // }
 // const portNumber = process.argv[2]
-// app.listen(portNumber);
+app.listen(port);
 // console.log(`Web server started and running at http://localhost:${portNumber}`);
 
 // process.stdin.write('Stop to shutdown the server: ')
